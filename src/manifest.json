@@ -1,0 +1,39 @@
+{
+  "name": "testex",
+  "version": "1.1",
+  "manifest_version": 3,
+  "action": {
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    },
+    "default_title": "Popup",
+    "default_popup": "popup/index.html"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.ts"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "run_at": "document_start",
+      "js": ["content-scripts/main.ts"],
+      "css": ["assets/index.scss"]
+    }
+  ],
+   "web_accessible_resources": [
+    {
+      "resources": [ "assets/*.png" ],
+      "matches": [ "https://www.linkedin.com/*" ]
+    }
+  ],
+  "permissions": [
+    "identity", "storage", "tabs"
+  ]
+}
