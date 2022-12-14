@@ -1,50 +1,67 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import { createPinia } from "pinia";
-import '../assets/index.scss'
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { fas } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import "../assets/index.scss";
+import { library } from "@fortawesome/fontawesome-svg-core";
+import { fas } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import urlChangeHook from "./urlobserver";
 
-library.add(fas)
+library.add(fas);
 
-function addContentNCRM() {
-    const app = document.querySelector('#app');
-    const el = document.querySelector('div.pv-top-card-v2-ctas > div > div.entry-point');
-    console.log({app, el});
-    
-    if (!app && el) {
-      
-        el.insertAdjacentHTML(
-          'afterend',
-          '<div id="app" class="flex items-center justify-center">hello</div>',
-        );
-        const app = createApp(App).use(createPinia());
-        app.component('fa', FontAwesomeIcon).mount('#app');
+let vueApp: ReturnType<typeof createApp>;
+function setupVueApp(entryPoint: HTMLDivElement) {
+  if (vueApp !== undefined) {
+    vueApp.unmount();
+  }
+  const app = entryPoint.querySelector("#app");
+  if (app instanceof HTMLDivElement)  {
+    app.remove();
+  }
+  entryPoint.insertAdjacentHTML(
+    "afterend",
+    '<div id="app" class="flex items-center justify-center">hello</div>'
+  );
+  vueApp = createApp(App).use(createPinia());
+  vueApp.component("fa", FontAwesomeIcon).mount("#app");
+}
+
+
+function inspectProfilePage(rootElement: HTMLDivElement) {
+  const main = rootElement.querySelector('main#main');
+  const pvTopCard = main?.querySelector('.pv-top-card');
+  const pvTopCardCta = pvTopCard?.querySelector('.pv-top-card-v2-ctas');
+  const entryPoint = pvTopCardCta?.querySelector(".entry-point");
+  if (entryPoint instanceof HTMLDivElement) {
+    setupVueApp(entryPoint);
+  } else if (pvTopCardCta instanceof HTMLDivElement) {
+    const observer = new MutationObserver(async (mutationsList: MutationRecord[]) => {
+      for (const mutation of mutationsList) {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          const node = mutation.addedNodes[0];
+          if (node instanceof HTMLDivElement && node.classList.contains('pvs-profile-actions')) {
+            const entryPoint = node.querySelector(".entry-point");
+            if (entryPoint instanceof HTMLDivElement) {
+              setupVueApp(entryPoint);
+            }
+          }
+        }
+      }
+    });
+    observer.observe(pvTopCardCta, {childList: true});
+  }
+}
+
+async function checkProfilePage(url: string) {
+  if (url.startsWith('https://www.linkedin.com/in')) {
+    const profilePage = document.querySelector('#profile-content');
+    console.log({profilePage});
+    if (profilePage instanceof HTMLDivElement) {
+      // profile feed ready
+      inspectProfilePage(profilePage);
     }
+  }
 }
-chrome.runtime.onMessage.addListener((obj, sender, response) => {
-  addContentNCRM()
-});
 
-window.onload = async () => {
-
-  // const content = document.createElement("div")
-  // content.setAttribute('id', 'app')
-  // content.classList.add("flex items-center justify-center")
-  // content.innerHTML = 'hello'
-  // console.log({content});
-  
-  // const elementAfterNewContent = document.querySelector('div.pv-top-card-v2-ctas > div > div.entry-point');
-  // const container = document.querySelector('div.pv-top-card-v2-ctas > div');
-  // console.log({content, elementAfterNewContent, container});
- 
-  // if (elementAfterNewContent && container) {
-  //   container.insertBefore(
-  //     content,
-  //     elementAfterNewContent,
-  //   );
-  //   const app = createApp(App).use(createPinia());
-  //   app.component('fa', FontAwesomeIcon).mount('#app');
-  // }
-}
+urlChangeHook(checkProfilePage);
+void checkProfilePage(window.location.href);
